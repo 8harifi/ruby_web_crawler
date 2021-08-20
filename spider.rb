@@ -13,6 +13,9 @@ end
 print "url> "
 url = gets().chomp
 
+print "time_out> "
+time_out = gets().chomp
+
 if not is_valid(url)
     puts "[!] ERROR: Invalid URL"
     exit
@@ -26,13 +29,20 @@ end
 
 que = [url]
 for url in que
-    html = open(url)
+    begin
+        html = URI.open(url, :read_timeout => time_out.to_i)
+    rescue Exception => Interrupt
+        puts "Canceled by user"
+        exit
+    rescue Exception => OpenURI::HTTPError
+        puts "[-] Couldn't open: #{url}"
+    end
     doc = Nokogiri::HTML(html)
     tags = doc.css("a")
     for tag in tags
-        link = tag.attributes['href'].text
-        if link != nil
-            if link.start_with?("/")
+        begin
+            link = tag.attributes['href'].text
+            if not link.start_with?("/")
                 que.push(link)
                 puts "[+] Found: #{link}"
             else
@@ -44,6 +54,10 @@ for url in que
                     puts "[+] Found: #{url+link}"
                 end
             end
+        rescue Exception => NoMethodError
+            # Do nothin
+        rescue Exception => Interrupt
+            puts "Canceled by user"
         end
     end
     que.delete(url)
